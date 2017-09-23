@@ -27,9 +27,38 @@ echo | simple echo to check telegram integration
   "folders": [
     {
       "enabled": true,
-      "name": "docs",
-      "path": "D:\\docs",
-      "exclude": [ "Projects Data", "Scaned Documents" ],
+      "name": "mongodb",
+      "path": "E:\\mongodb_backups",
+      "exclude": [ ],
+      "scheduling": [ "* 0 * * *", "* 12 * * *" ],
+      "ftpId": 1,
+      "ftpEnabled": true,
+      "keepLocal": true,
+      "emptyOnDone": true,
+      "RunProcessBefore": [
+        {
+          "enabled": true,
+          "path": "C:\\mongodb\\backup.bat",
+          "timeout": 10000,
+          "closeOnStdout": "ok",
+          "waitToFinish": true,
+          "log": false
+        }
+      ],
+      "RunProcessAfter": [
+        {
+          "enabled": false,
+          "path": "",
+          "timeout": 60000,
+          "closeOnStdout": "ok"
+        }
+      ]
+    },
+    {
+      "enabled": true,
+      "name": "sql2014",
+      "path": "D:\\backups",
+      "exclude": [ ],
       "scheduling": [ "* 0 * * *", "* 12 * * *" ],
       "ftpId": 1,
       "ftpEnabled": true,
@@ -41,14 +70,17 @@ echo | simple echo to check telegram integration
           "path": "D:\\SqlBackuper\\backuper.console.exe",
           "timeout": 10000,
           "closeOnStdout": "ok",
-          "waitToFinish": true
+          "waitToFinish": true,
+          "log": false
+
         }
       ],
       "RunProcessAfter": [
         {
           "enabled": false,
           "path": "",
-          "timeout": 60000
+          "timeout": 60000,
+          "closeOnStdout": "ok"
         }
       ]
     }
@@ -56,16 +88,16 @@ echo | simple echo to check telegram integration
   "ftps": [
     {
       "id": 1,
-      "host": "192.168.2.100",
-      "user": "remoteBackupUser",
+      "host": "192.168.1.100",
+      "user": "ftpUser",
       "password": "123",
       "port": 21,
-      "home": "SERVER 1"
+      "home": "Laptop"
     }
   ],
   "settings": {
     "systemName": "laptop",
-    "telegramBotToken": "Get from @botFather",
+    "telegramBotToken": "Get from bot father !",
     "telegramBotKey": "123",
     "telegramUsers": [
     ],
@@ -76,5 +108,3 @@ echo | simple echo to check telegram integration
     }
   }
 }
-
-
