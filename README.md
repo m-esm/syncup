@@ -9,9 +9,13 @@ using https://github.com/yagop/node-telegram-bot-api
 * use one bot per server
 * you need to register your telegram account using [systemName] register [telegramBotKey] 
 * it use long polling so no weebHook required
+* be aware of telegram file size limitation when using telegram command 
 
 Command | Description
 ------------ | -------------
+[systemName] run all [telegram(optional)] | will get backup of all enabled folders
+[systemName] run [folderName] [telegram(optional)] | will get backup of specified folder 
+[systemName] register [telegramBotKey] | registering device on syncup service
 [systemName] register [telegramBotKey] | registering device on syncup service
 [systemName] servicestart | start windows service
 [systemName] serviceinstall | install windows service
