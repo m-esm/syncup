@@ -1,4 +1,4 @@
-### syncup is backup service written in nodeJs and its working on windows/linux.
+## syncup is backup service written in nodeJs and its working on windows/linux.
 * it will take a zip archive from your specified directories and send it to specified ftp or just keeping it local (based on your setting in ./config.json) 
 * you can schedule your backups (CRON Job like * * * * *)
    using https://github.com/node-schedule/node-schedule
