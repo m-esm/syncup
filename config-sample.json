@@ -1,0 +1,53 @@
+{
+  "folders": [
+    {
+      "enabled": true,
+      "name": "docs",
+      "path": "D:\\docs",
+      "exclude": [ "Projects Data", "Scaned Documents" ],
+      "scheduling": [ "* 0 * * *", "* 12 * * *" ],
+      "ftpId": 1,
+      "ftpEnabled": true,
+      "keepLocal": true,
+      "emptyOnDone": true,
+      "RunProcessBefore": [
+        {
+          "enabled": true,
+          "path": "D:\\SqlBackuper\\backuper.console.exe",
+          "timeout": 10000,
+          "closeOnStdout": "ok",
+          "waitToFinish": true
+        }
+      ],
+      "RunProcessAfter": [
+        {
+          "enabled": false,
+          "path": "",
+          "timeout": 60000
+        }
+      ]
+    }
+  ],
+  "ftps": [
+    {
+      "id": 1,
+      "host": "192.168.2.100",
+      "user": "remoteBackup",
+      "password": "123",
+      "port": 21,
+      "home": "SERVER 1"
+    }
+  ],
+  "settings": {
+    "systemName": "laptop",
+    "telegramBotToken": "Get from @botFather",
+    "telegramBotKey": "123",
+    "telegramUsers": [
+    ],
+    "service": {
+      "enabled": false,
+      "name": "Syncup",
+      "description": "Will backup for you !"
+    }
+  }
+}

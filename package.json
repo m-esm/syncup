@@ -1,0 +1,39 @@
+{
+  "name": "syncup",
+  "version": "1.0.0",
+  "main": "app.js",
+  "dependencies": {
+    "archiver": "^2.0.3",
+    "express": "^4.15.4",
+    "fs-extra": "^4.0.2",
+    "ftp": "^0.3.10",
+    "moment": "^2.18.1",
+    "node-telegram-bot-api": "^0.28.0",
+    "node-schedule": "^1.2.5",
+    "node-windows": "^0.1.14",
+    "q": "^1.5.0",
+    "underscore": "^1.8.3",
+    "zip-folder": "^1.0.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Mohsen Esmaeli <m-esm@hotmail.com>",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/m-esm/syncup.git"
+  },
+  "keywords": [
+    "backup",
+    "service",
+    "ftp",
+    "telegram"
+  ],
+  "bugs": {
+    "url": "https://github.com/m-esm/syncup/issues"
+  },
+  "homepage": "https://github.com/m-esm/syncup#readme",
+  "description": ""
+}
