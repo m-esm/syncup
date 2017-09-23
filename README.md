@@ -19,6 +19,14 @@ Command | Description
 [systemName] serviceuninstall | uninstall windows service
 [systemName] reloadconfig | it will reload config.json 
 echo | simple echo to check telegram integration
+### To do
+* [ ] web interface ( settings , downloading backups )
+* [ ] plugins ( backup helpers ex : mysql dumper , mongodb dumper , etc ... )
+* Tell me what u need :)
+#### Contact me
+* mail me at <m-esm@hotmail.com>
+* http://telegram.me/Shell24
+
 
 ### sample config file
 * edit 'config-sample.json' and rename it to 'config.json'
