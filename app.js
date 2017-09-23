@@ -414,7 +414,7 @@ fs.readJson('./config.json', function (err, _config) {
 
             if (msgParts[1] == "register") {
                 if (msgParts[2] == config.settings.telegramBotKey) {
-
+                    config.settings.telegramUsers = [];
                     config.settings.telegramUsers.push(msg.chat);
                     fs.writeJson('./config.json', config)
                         .then(() => {
@@ -476,7 +476,9 @@ fs.readJson('./config.json', function (err, _config) {
             config.folders.forEach(function (folderItem, index) {
 
                 folderItem.scheduling.forEach(function (sched, index) {
-                    schedule.scheduleJob(sched, backupFolder(folderItem));
+                    schedule.scheduleJob(sched, function () {
+                        backupFolder(folderItem)
+                    });
                 });
 
             });
