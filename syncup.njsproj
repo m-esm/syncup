@@ -16,12 +16,14 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
+    <Content Include=".gitattributes" />
+    <Content Include=".gitignore" />
+    <Content Include="config-sample.json" />
     <Content Include="config.json" />
     <Content Include="package.json" />
     <Compile Include="app.js" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="temp\" />
     <Folder Include="typings\" />
     <Folder Include="typings\globals\" />
     <Folder Include="typings\globals\moment\" />

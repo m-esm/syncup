@@ -137,7 +137,7 @@ var runProcess = function (process) {
     child.stderr.on('data', function (data) {
         if (process.log)
             clog('data from process ' + process.path + ' ' + data.toString());
-      
+
 
     });
 
@@ -453,10 +453,6 @@ fs.readJson('./config.json', function (err, _config) {
             }
 
 
-
-            // send a message to the chat acknowledging receipt of their message
-
-
         }
 
         if (msgParts[0] == "echo") {
@@ -471,8 +467,7 @@ fs.readJson('./config.json', function (err, _config) {
 
     if (process.env.servicejob == "true" || config.settings.service.enabled == false) {
 
-        if (process.env.servicejob == "true") {
-
+        if (process.env.servicejob == "true")
             config.folders.forEach(function (folderItem, index) {
 
                 folderItem.scheduling.forEach(function (sched, index) {
@@ -484,16 +479,6 @@ fs.readJson('./config.json', function (err, _config) {
             });
 
 
-        } else {
-
-            //backupASAP();
-
-
-
-
-        }
-
-
     } else {
 
 
@@ -501,19 +486,6 @@ fs.readJson('./config.json', function (err, _config) {
 
     }
 
-    //var c = new ftpClient();
-    //c.on('ready', function () {
-    //    c.list(function (err, list) {
-    //        if (err) throw err;
-    //        console.dir(list);
-
-    //    });
-    //    c.pwd(function (err, cwd) {
-    //        clog(cwd);
-    //    });
-    //});
-    //// connect to localhost:21 as anonymous
-    //c.connect(config.remoteFtp);
 
 
 });
