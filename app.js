@@ -42,9 +42,8 @@ var zipItem = function (itemPath, itemName, zipPath) {
     var archive = archiver('zip');
 
     output.on('close', function () {
-    
-        clog('archiver done => ' + zipPath + '\n' +
-            archive.pointer() + ' total bytes');
+
+        //   clog('archiver done => ' + zipPath + '\n' + archive.pointer() + ' total bytes');
 
         deferred.resolve();
 
@@ -100,7 +99,7 @@ var ZipItems = function (folderItem, items, tempPath) {
 
             deferred.resolve();
 
-            clog('all files ziped from ' + folderItem.path + ' to ' + tempPath);
+            //    clog('all files ziped from ' + folderItem.path + ' to ' + tempPath);
 
         });
 
@@ -126,7 +125,8 @@ var runProcess = function (process) {
 
         data = data.toLowerCase().trim();
 
-        clog(process.path + ' => stdout: ' + data);
+        if (process.log)
+            clog(process.path + ' => stdout: ' + data);
 
         if (data == process.closeOnStdout.trim().toLowerCase()) {
             child.kill();
@@ -135,14 +135,16 @@ var runProcess = function (process) {
     });
 
     child.stderr.on('data', function (data) {
-
-        deferred.catch();
+        if (process.log)
+            clog('data from process ' + process.path + ' ' + data.toString());
+      
 
     });
 
     child.on('close', function (code) {
 
-        clog(process.path + ' closing code: ' + code);
+        if (process.log)
+            clog(process.path + ' closing code: ' + code);
         deferred.resolve();
 
     });
@@ -170,7 +172,7 @@ var sendZipToFtp = function (folderItem, zipPath) {
             if (err)
                 return handleError(err);
 
-            clog('transfered to ' + remoteFtp.host);
+            clog(zipPath + '=> transfered to ' + remoteFtp.host);
 
             c.end();
 
@@ -266,8 +268,6 @@ var backupFolder = function (folderItem) {
             if (err)
                 return handleError(err);
 
-            clog(readRes);
-
             var timeString = moment().format('YYYY-MM-DD (Do MMM) hh-mm-ss');
 
             var tempPath = './backups/' + folderItem.name + ' _ ' + timeString;
@@ -321,7 +321,7 @@ var backupFolder = function (folderItem) {
 
 var backupASAP = function () {
 
-    clog('backupASAP runned');
+    clog('backup process started ...');
     var backupFolderPromiseArray = [];
 
     config.folders.forEach(function (folderItem, index) {
@@ -403,7 +403,7 @@ fs.readJson('./config.json', function (err, _config) {
 
     telegramBot.on('message', (msg) => {
 
-       
+
 
         var chatId = msg.chat.id;
         var msgText = msg.text.toLowerCase().trim();
@@ -494,7 +494,7 @@ fs.readJson('./config.json', function (err, _config) {
 
     } else {
 
-       
+
         svc.install();
 
     }
