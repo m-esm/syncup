@@ -11,6 +11,30 @@ var EventLogger = require('node-windows').EventLogger;
 var archiver = require('archiver');
 var TelegramBot = require('node-telegram-bot-api');
 var exec = require('child_process').exec;
+var guid = require('guid');
+
+const express = require('express')
+const app = express()
+
+fs.ensureDir('./download')
+    .then(() => {
+
+        app.use(express.static('download'))
+
+        app.get('/', function (req, res) {
+            res.send(':)').end();
+        });
+
+
+        app.listen(6767, function () {
+            clog('syncup http server running on port 6767')
+        });
+
+    })
+    .catch(err => {
+        clog(err)
+    })
+
 
 var log = {};
 var config = {};
@@ -36,7 +60,6 @@ var handleError = function (err) {
 
 var zipItem = function (itemPath, itemName, zipPath) {
     var deferred = Q.defer();
-
 
     var output = fs.createWriteStream(zipPath);
     var archive = archiver('zip');
@@ -237,11 +260,14 @@ var sendZipToFtp = function (folderItem, zipPath) {
 
 };
 
-var backupFolder = function (folderItem,sendToTelegram) {
+var backupFolder = function (folderItem, mode) {
 
 
     if (!folderItem.enabled)
         return;
+
+    if (!mode)
+        mode = "ftp";
 
     clog('backup process started for ' + folderItem.name);
 
@@ -274,11 +300,11 @@ var backupFolder = function (folderItem,sendToTelegram) {
             if (folderItem.include)
                 if (folderItem.include.length > 0)
                     readRes = folderItem.include;
-            
 
-            var timeString = moment().format('YYYY-MM-DD (Do MMM) hh-mm-ss');
 
-            var tempPath = './backups/' + folderItem.name + ' _ ' + timeString;
+            var timeString = moment().format('YYYY-MM-DD_hh-mm-ss');
+
+            var tempPath = './backups/' + folderItem.name + '_' + timeString;
 
             ZipItems(folderItem, readRes, tempPath).then(function () {
 
@@ -291,19 +317,35 @@ var backupFolder = function (folderItem,sendToTelegram) {
 
                     clog('final zip created => ' + zipPath);
 
-                    if (folderItem.ftpEnabled && !sendToTelegram )
-                        sendZipToFtp(folderItem, zipPath);
+                    if (mode == "ftp")
+                        if (folderItem.ftpEnabled)
+                            sendZipToFtp(folderItem, zipPath);
 
-                    if (sendToTelegram)
+                    if (mode == "telegram")
                         if (telegramBot)
                             if (config.settings.telegramUsers)
                                 config.settings.telegramUsers.forEach(function (tgUser, chatIndex) {
                                     telegramBot.sendDocument(tgUser.id, zipPath).then(function () {
-
+                                        fs.remove(zipPath);
                                     }, function (err) {
                                         clog(err);
                                     });
                                 });
+
+                    if (mode == "download") {
+
+                        var destFileName = config.settings.systemName + '_'+ path.basename(zipPath, 'zip') + '_' + guid.raw() + '.zip';
+                        var destPath = './download/' + destFileName;
+
+                        fs.move(zipPath, destPath);
+
+                        clog('Your requested backup is ready and it will automatically deleted in 24 hours http://' + config.settings.systemAddr + ':6767/' + destFileName);
+
+                        setTimeout(function () {
+                            fs.remove( destPath);
+                        }, 1000 * 60 * 60 * 24);
+
+                    }
 
                     if (folderItem.emptyOnDone)
                         fs.emptyDir(folderItem.path, err => {
@@ -313,9 +355,7 @@ var backupFolder = function (folderItem,sendToTelegram) {
                         });
 
                     fs.remove(tempPath);
-
                     Q.all(AfterRunProcPromiseArray);
-
                     deferred.resolve();
 
                 });
@@ -338,7 +378,7 @@ var backupFolder = function (folderItem,sendToTelegram) {
 };
 
 
-var backupAll = function (sendToTelegram) {
+var backupAll = function (mode) {
 
     clog('backup process started ...');
     var backupFolderPromiseArray = [];
@@ -350,7 +390,7 @@ var backupAll = function (sendToTelegram) {
         //if (matches)
         //    folderItem.path = folderItem.path.replace(matches[0], moment().format(matches[1]));
 
-        backupFolderPromiseArray.push(backupFolder(folderItem, sendToTelegram));
+        backupFolderPromiseArray.push(backupFolder(folderItem, mode));
 
     });
 
@@ -422,8 +462,6 @@ fs.readJson('./config.json', function (err, _config) {
 
     telegramBot.on('message', (msg) => {
 
-
-
         var chatId = msg.chat.id;
         var msgText = msg.text.toLowerCase().trim();
         var msgParts = msgText.split(' ');
@@ -448,9 +486,9 @@ fs.readJson('./config.json', function (err, _config) {
 
             if (tgUser) {
 
-                if (msgParts[1] == "run") {
+                if (msgParts[1] == "backup") {
                     if (msgParts[2] == "all")
-                        backupAll(msgParts[3] == "telegram");
+                        backupAll(msgParts[3]);
                     else {
                         var folderItem = _.findWhere(config.folders, {
                             name: msgParts[2]
@@ -458,7 +496,7 @@ fs.readJson('./config.json', function (err, _config) {
 
 
                         if (folderItem)
-                            backupFolder(folderItem, msgParts[3] == "telegram");
+                            backupFolder(folderItem, msgParts[3]);
                         else
                             clog('run what ? (ex : [systemName] run [folderName])');
                     }

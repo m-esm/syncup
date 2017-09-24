@@ -1,0 +1,1 @@
+"E:\mongodb\bin\mongodump.exe" --out E:\\TempBackups\\mongodb_backups
