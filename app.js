@@ -5,9 +5,10 @@ var zip = require('zip-folder');
 var Q = require('q');
 var path = require('path');
 var ftpClient = require('ftp');
-var Service = require('node-windows').Service;
+
 var schedule = require('node-schedule');
-var EventLogger = require('node-windows').EventLogger;
+var isWin = /^win/.test(process.platform);
+
 var archiver = require('archiver');
 var TelegramBot = require('node-telegram-bot-api');
 var exec = require('child_process').exec;
@@ -36,29 +37,35 @@ fs.ensureDir('./download')
     })
 
 
-var log = {};
 var config = {};
 var telegramBot = false;
-var clog = function (input) {
+var clog = function (input, folder) {
 
     console.log(input);
     if (telegramBot)
         if (config.settings.telegramUsers)
             config.settings.telegramUsers.forEach(function (tgUser, chatIndex) {
-                telegramBot.sendMessage(tgUser.id, input.toString());
+                if (tgUser.isAdmin)
+                    telegramBot.sendMessage(tgUser.id, input.toString());
+
+                if (!tgUser.isAdmin)
+                    if (folder && tgUser.folders)
+                        if (tgUser.folders.indexOf(folder.name) != -1)
+                            telegramBot.sendMessage(tgUser.id, input.toString());
+
+
             });
 
 };
 
 var handleError = function (err) {
 
-    clog('handleError => ', err);
-    log.error(err.toString());
+    clog('handleError => ' + err, null);
 
 };
 
 
-var zipItem = function (itemPath, itemName, zipPath) {
+var zipItem = function (itemPath, itemName, zipPath, folderItem) {
     var deferred = Q.defer();
 
     var output = fs.createWriteStream(zipPath);
@@ -66,10 +73,10 @@ var zipItem = function (itemPath, itemName, zipPath) {
 
     output.on('close', function () {
 
-        //   clog('archiver done => ' + zipPath + '\n' + archive.pointer() + ' total bytes');
+        if (folderItem.log)
+            clog('archiver done => ' + zipPath + '\n' + archive.pointer() + ' total bytes', folderItem);
 
         deferred.resolve();
-
 
     });
 
@@ -84,7 +91,6 @@ var zipItem = function (itemPath, itemName, zipPath) {
 
     } else {
         archive.file(itemPath, { name: itemName });
-
     }
 
     archive.finalize();
@@ -111,18 +117,18 @@ var ZipItems = function (folderItem, items, tempPath) {
             if (folderItem.exclude.indexOf(item) != -1)
                 return;
 
-            var itemPath = folderItem.path + '\\' + item;
+            var itemPath = folderItem.path + (isWin ? '\\' : '/') + item;
             var zipPath = tempPath + '/' + item + '.zip';
 
-            zipItemPromiseArray.push(zipItem(itemPath, item, zipPath));
+            zipItemPromiseArray.push(zipItem(itemPath, item, zipPath, folderItem));
 
         });
 
         Q.all(zipItemPromiseArray).then(function () {
 
             deferred.resolve();
-
-            //    clog('all files ziped from ' + folderItem.path + ' to ' + tempPath);
+            if (folderItem.log)
+                clog('all files ziped from ' + folderItem.path + ' to ' + tempPath);
 
         });
 
@@ -269,7 +275,7 @@ var backupFolder = function (folderItem, mode) {
     if (!mode)
         mode = "ftp";
 
-    clog('backup process started for ' + folderItem.name);
+    clog('backup process started for ' + folderItem.name, folderItem);
 
     var deferred = Q.defer();
 
@@ -315,7 +321,7 @@ var backupFolder = function (folderItem, mode) {
                     if (err)
                         return handleError(err);
 
-                    clog('final zip created => ' + zipPath);
+                    clog('final zip created => ' + zipPath, folderItem);
 
                     if (mode == "ftp")
                         if (folderItem.ftpEnabled)
@@ -328,22 +334,22 @@ var backupFolder = function (folderItem, mode) {
                                     telegramBot.sendDocument(tgUser.id, zipPath).then(function () {
                                         fs.remove(zipPath);
                                     }, function (err) {
-                                        clog(err);
+                                        clog(err, folderItem);
                                     });
                                 });
 
                     if (mode == "download") {
 
-                        var destFileName = config.settings.systemName + '_'+ path.basename(zipPath, 'zip') + '_' + guid.raw() + '.zip';
+                        var destFileName = config.settings.systemName + '_' + path.basename(zipPath, 'zip') + '_' + guid.raw() + '.zip';
                         var destPath = './download/' + destFileName;
 
                         fs.move(zipPath, destPath);
 
-                        clog('Your requested backup is ready and it will automatically deleted in 24 hours http://' + config.settings.systemAddr + ':6767/' + destFileName);
+                        clog('Your requested backup is ready and it will automatically deleted in 2 hours http://' + config.settings.systemAddr + ':6767/' + destFileName, folderItem);
 
                         setTimeout(function () {
-                            fs.remove( destPath);
-                        }, 1000 * 60 * 60 * 24);
+                            fs.remove(destPath);
+                        }, 1000 * 60 * 60 * 2);
 
                     }
 
@@ -351,7 +357,7 @@ var backupFolder = function (folderItem, mode) {
                         fs.emptyDir(folderItem.path, err => {
                             if (err) return console.error(err)
 
-                            clog('folder emptyed ! ' + folderItem.path);
+                            clog('folder emptyed ! ' + folderItem.path, folderItem);
                         });
 
                     fs.remove(tempPath);
@@ -417,45 +423,48 @@ fs.readJson('./config.json', function (err, _config) {
     if (err)
         return handleError(err);
 
+    var svc = {};
+
+
     console.info('config loaded =>', config);
 
-    var svc = new Service({
-        name: config.settings.service.name,
-        description: config.settings.service.description,
-        script: __filename,
-        env: {
-            name: "servicejob",
-            value: true
-        },
-        abortOnError: true
-    });
+    if (isWin) {
+        var Service = require('node-windows').Service;
+        svc = new Service({
+            name: config.settings.service.name,
+            description: config.settings.service.description,
+            script: __filename,
+            env: {
+                name: "servicejob",
+                value: true
+            },
+            abortOnError: true
+        });
+
+        svc.on('install', function () {
+            clog('service installed !');
+        });
+        svc.on('alreadyinstalled', function () {
+            clog('service already installed !');
+        });
+        svc.on('uninstall', function () {
+            clog('service Uninstall complete !');
+        });
+
+        svc.on('start', function () {
+            clog('service started !');
+        });
+
+        svc.on('stop', function () {
+            clog('service stopped !');
+        });
+
+        svc.on('error', function (err) {
+            clog('service error ' + err.toString());
+        });
 
 
-    svc.on('install', function () {
-        clog('service installed !');
-    });
-    svc.on('alreadyinstalled', function () {
-        clog('service already installed !');
-    });
-    svc.on('uninstall', function () {
-        clog('service Uninstall complete !');
-    });
-
-    svc.on('start', function () {
-        clog('service started !');
-    });
-
-    svc.on('stop', function () {
-        clog('service stopped !');
-    });
-
-    svc.on('error', function (err) {
-        clog('service error ' + err.toString());
-    });
-
-
-    log = new EventLogger(config.settings.service.name);
-
+    }
 
 
     telegramBot = new TelegramBot(config.settings.telegramBotToken, { polling: true });
@@ -465,66 +474,168 @@ fs.readJson('./config.json', function (err, _config) {
         var chatId = msg.chat.id;
         var msgText = msg.text.toLowerCase().trim();
         var msgParts = msgText.split(' ');
-        if (msgParts[0] == config.settings.systemName.toLowerCase()) {
 
-            var tgUser = _.findWhere(config.settings.telegramUsers, { id: msg.chat.id });
+        var tgUser = _.findWhere(config.settings.telegramUsers, { id: msg.chat.id });
 
-            if (msgParts[1] == "register") {
-                if (msgParts[2] == config.settings.telegramBotKey) {
-                    config.settings.telegramUsers = [];
-                    config.settings.telegramUsers.push(msg.chat);
-                    fs.writeJson('./config.json', config)
-                        .then(() => {
-                            telegramBot.sendMessage(chatId, 'You have registered to ' + config.settings.systemName + ' syncup system');
-                        })
-                        .catch(err => {
-                            telegramBot.sendMessage(chatId, 'save config failed ! try again ...');
-                        })
+        if (msgParts[0] == "unregister") {
 
+            config.settings.telegramUsers = _.filter(config.settings.telegramUsers, function (item) {
+                if (item.id != chatId)
+                    return true;
+            });
+
+            fs.writeJson('./config.json', config)
+                .then(() => {
+                    telegramBot.sendMessage(chatId, 'You have unregistered from ' + config.settings.systemName + ' syncup system');
+                })
+                .catch(err => {
+                    telegramBot.sendMessage(chatId, 'save config failed ! try again ...');
+                })
+
+        }
+
+
+        if (msgParts[0] == "register") {
+
+            clog('register request from ' + JSON.stringify(msg.chat));
+
+            if (tgUser)
+                telegramBot.sendMessage(chatId, 'you are already registered / use unregister for removing your account' + JSON.stringify(tgUser));
+            else {
+                config.settings.telegramUsers.push(
+                    _.extend(msg.chat, { folders: [], isAdmin: msgParts[1] == config.settings.telegramBotKey }));
+                fs.writeJson('./config.json', config)
+                    .then(() => {
+                        telegramBot.sendMessage(chatId, 'You have registered to ' + config.settings.systemName + ' syncup system');
+                    })
+                    .catch(err => {
+                        telegramBot.sendMessage(chatId, 'save config failed ! try again ...');
+                    })
+            }
+        }
+
+        if (tgUser) {
+
+
+            if (msgParts[0] == "showconfig")
+                if (tgUser.isAdmin)
+                    clog(JSON.stringify(config));
+
+
+            if (msgParts[0] == "myfolders") {
+                if (tgUser.isAdmin) {
+                    clog(JSON.stringify(_.map(config.folders, function (item) {
+                        return item.name;
+                    })));
+                } else {
+                    telegramBot.sendMessage(chatId, JSON.stringify(tgUser.folders));
                 }
             }
 
-            if (tgUser) {
+            if (msgParts[0] == "backup") {
+                if (msgParts[1] == "all" && tgUser.isAdmin)
+                    backupAll(msgParts[2]);
+                else {
 
-                if (msgParts[1] == "backup") {
-                    if (msgParts[2] == "all")
-                        backupAll(msgParts[3]);
-                    else {
-                        var folderItem = _.findWhere(config.folders, {
-                            name: msgParts[2]
+                    var folderItem = _.findWhere(config.folders, {
+                        name: msgParts[1]
+                    });
+
+
+                    if (folderItem) {
+
+                        if (tgUser.isAdmin || tgUser.folders.indexOf(folderItem.name) != -1) {
+
+                            clog('backup requested for ' + folderItem.name + ' from ' + tgUser.username);
+
+                            backupFolder(folderItem, msgParts[2]);
+                        }
+                        else {
+                            telegramBot.sendMessage(chatId, 'folder is not yours ...');
+                        }
+
+                    }
+                    else
+                        telegramBot.sendMessage(chatId, 'run what ? (ex : [systemName] run [folderName])');
+                }
+            }
+
+            if (tgUser.isAdmin) {
+
+                if (msgParts[0] == "addfolder") {
+
+                    config.settings.telegramUsers = _.map(config.settings.telegramUsers, function (item) {
+                        if (item.username.toLowerCase() == msgParts[1].toLowerCase())
+                            item.folders.push(msgParts[2]);
+
+                        return item;
+                    });
+
+                    fs.writeJson('./config.json', config)
+                        .then(() => {
+                            telegramBot.sendMessage(chatId, 'config save for ' + config.settings.systemName + ' syncup system');
+                        })
+                        .catch(err => {
+                            telegramBot.sendMessage(chatId, 'save config failed ! try again ...');
                         });
 
+                }
 
-                        if (folderItem)
-                            backupFolder(folderItem, msgParts[3]);
-                        else
-                            clog('run what ? (ex : [systemName] run [folderName])');
-                    }
+                if (msgParts[0] == "delfolder") {
+
+                    config.settings.telegramUsers = _.map(config.settings.telegramUsers, function (item) {
+
+                        if (item.username.toLowerCase() == msgParts[1].toLowerCase())
+                            item.folders = _.filter(item.folders, function (ff) {
+                                return ff != msgParts[2];
+                            });
+
+                        return item;
+                    });
+
+                    fs.writeJson('./config.json', config)
+                        .then(() => {
+                            telegramBot.sendMessage(chatId, 'config save for ' + config.settings.systemName + ' syncup system');
+                        })
+                        .catch(err => {
+                            telegramBot.sendMessage(chatId, 'save config failed ! try again ...');
+                        });
+
                 }
 
 
-                if (msgParts[1] == "reloadconfig")
+                if (msgParts[0] == "listusers")
+                    clog(JSON.stringify(config.settings.telegramUsers));
+
+
+
+                if (msgParts[0] == "reloadconfig")
                     fs.readJson('./config.json', function (err, _config) {
                         config = _config;
                     });
 
+                if (msgParts[0].startsWith("service"))
+                    if (isWin) {
 
-                if (msgParts[1] == "servicestart")
-                    svc.start();
+                        if (msgParts[0] == "servicestart")
+                            svc.start();
 
-                if (msgParts[1] == "serviceinstall")
-                    svc.install();
+                        if (msgParts[0] == "serviceinstall")
+                            svc.install();
 
-                if (msgParts[1] == "servicestop")
-                    svc.stop();
+                        if (msgParts[0] == "servicestop")
+                            svc.stop();
 
-                if (msgParts[1] == "serviceuninstall")
-                    svc.uninstall();
+                        if (msgParts[0] == "serviceuninstall")
+                            svc.uninstall();
 
+                    } else {
+                        clog('Operation need windows os You are using ' + process.platform);
+                    }
             }
-
-
         }
+
+
 
         if (msgParts[0] == "echo") {
             telegramBot.sendMessage(chatId, 'Echo from ' + config.settings.systemName);

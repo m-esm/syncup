@@ -13,17 +13,20 @@ using https://github.com/yagop/node-telegram-bot-api
 
 Command | Description
 ------------ | -------------
-[systemName] backup all [telegram,download,ftp] | will get backup of all enabled folders
-[systemName] backup [folderName] [telegram,download,ftp] | will get backup of specified folder 
-[systemName] register [telegramBotKey] | registering device on syncup service
-[systemName] register [telegramBotKey] | registering device on syncup service
-[systemName] servicestart | start windows service
-[systemName] serviceinstall | install windows service
-[systemName] servicestop | stop windows service
-[systemName] serviceuninstall | uninstall windows service
-[systemName] reloadconfig | it will reload config.json 
+backup all [telegram,download,ftp] | will get backup of all enabled folders
+backup [folderName] [telegram,download,ftp] | will get backup of specified folder 
+myfolders | shows your owned folders 
+listusers | list registered telegram users if you are admin
+register [telegramBotKey] | registering on syncup service ( change isAdmin to true in config > telegramUsers for admin access)
+unregister  | removing account from syncup service
+servicestart | start windows service
+serviceinstall | install windows service
+servicestop | stop windows service
+serviceuninstall | uninstall windows service
+reloadconfig | it will reload config.json 
 echo | simple echo to check telegram integration
 ### To do
+* [x] test on linux
 * [x] sending backups with telegram
 * [x] using telegram to send backup uniq download link
 * [ ] plugins ( backup helpers ex : mysql dumper , mongodb dumper , etc ... )
